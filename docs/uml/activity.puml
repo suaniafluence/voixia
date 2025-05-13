@@ -1,0 +1,8 @@
+@startuml
+(*) --> "Appel reçu"
+--> "Connexion SIP"
+--> "Streaming audio"
+--> "Réception OpenAI"
+--> "Lecture réponse"
+--> (*) 
+@enduml

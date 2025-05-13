@@ -1,0 +1,21 @@
+@startuml
+node "Téléphone" {
+}
+
+node "OVH SIP" {
+}
+
+node "Serveur SIP (Asterisk)" {
+}
+
+node "App Python" {
+}
+
+cloud "OpenAI API" {
+}
+
+"Téléphone" --> "OVH SIP"
+"OVH SIP" --> "Serveur SIP (Asterisk)"
+"Serveur SIP (Asterisk)" --> "App Python"
+"App Python" --> "OpenAI API"
+@enduml

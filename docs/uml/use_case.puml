@@ -1,0 +1,17 @@
+@startuml
+left to right direction
+
+actor Interlocuteur
+
+rectangle "Système IA vocal" {
+    (Passer un appel)
+    (Parler à l’IA)
+    (Recevoir une réponse vocale)
+    (Terminer l’appel)
+}
+
+Interlocuteur --> (Passer un appel)
+Interlocuteur --> (Parler à l’IA)
+Interlocuteur --> (Recevoir une réponse vocale)
+Interlocuteur --> (Terminer l’appel)
+@enduml

@@ -1,0 +1,24 @@
+@startuml
+class CallHandler {
+    +start_call()
+    +end_call()
+}
+
+class AudioStream {
+    +start_stream()
+    +stop_stream()
+}
+
+class GPTClient {
+    +send_audio()
+    +receive_text()
+}
+
+class ResponsePlayer {
+    +play()
+}
+
+CallHandler --> AudioStream
+CallHandler --> GPTClient
+CallHandler --> ResponsePlayer
+@enduml

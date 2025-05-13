@@ -24,6 +24,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-asyncio pytest-cov
+    - name: Debug path
+      run: |
+        echo "WORKSPACE: $GITHUB_WORKSPACE"
+        echo "Contenu:"
+        ls -l $GITHUB_WORKSPACE
 
     - name: Run tests with coverage
       run: |

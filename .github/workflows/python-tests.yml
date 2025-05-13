@@ -27,4 +27,5 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest --cov=app tests/
+        export PYTHONPATH="${{ github.workspace }}"
+        pytest --cov=app --cov-report=term-missing --cov-config=.coveragerc tests/

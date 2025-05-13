@@ -1,0 +1,6 @@
+OPENAI_API_KEY=your-openai-key
+VOICE=alloy
+SIP_SERVER=sip.ovh.net
+SIP_PORT=5060
+SIP_USERNAME=your-username@sip.ovh.net
+SIP_PASSWORD=your-password

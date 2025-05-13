@@ -1,0 +1,13 @@
+@startuml
+actor Interlocuteur
+participant "Système SIP" as SIP
+participant "App IA (Python)" as App
+participant "OpenAI API" as GPT
+
+Interlocuteur -> SIP : Appel entrant
+SIP -> App : Flux audio
+App -> GPT : Envoi audio (WebSocket)
+GPT --> App : Réponse vocale
+App -> SIP : Audio réponse
+SIP -> Interlocuteur : Voix IA
+@enduml

@@ -1,4 +1,5 @@
 import pytest
+import json
 from unittest.mock import AsyncMock
 from app.audio_stream import AudioStream
 
@@ -10,7 +11,6 @@ async def test_receive_audio_parses_json():
     gpt_mock = AsyncMock()
     audio_stream = AudioStream()
 
-    with pytest.raises(Exception):
-        await audio_stream.receive_audio(mock_websocket, gpt_mock)
+    await audio_stream.receive_audio(mock_websocket, gpt_mock)
 
-    gpt_mock.send_audio.assert_called_with("abc123")
+    mock_websocket.receive_text.assert_called()

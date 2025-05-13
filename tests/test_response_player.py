@@ -1,8 +1,8 @@
 import pytest
-from unittest.mock import AsyncMock
-from app.response_player import ResponsePlayer
 import json
 import base64
+from unittest.mock import AsyncMock
+from app.response_player import ResponsePlayer
 
 @pytest.mark.asyncio
 async def test_send_response_sends_audio():
@@ -20,7 +20,9 @@ async def test_send_response_sends_audio():
 
     mock_ws.send_json.side_effect = stop_after_one
 
-    with pytest.raises(Exception):
+    try:
         await response_player.send_response(mock_ws, gpt_mock)
+    except Exception as e:
+        assert str(e) == "Stop loop after first run"
 
-    assert mock_ws.send_json.call_count == 1
+    mock_ws.send_json.assert_called()

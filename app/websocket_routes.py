@@ -1,5 +1,9 @@
-import json
+import asyncio
 from fastapi import WebSocket, APIRouter
+from call_handler import CallHandler
+from audio_stream import AudioStream
+from gpt_client import GPTClient
+from response_player import ResponsePlayer
 
 websocket_router = APIRouter()
 
@@ -7,12 +11,15 @@ websocket_router = APIRouter()
 async def handle_media_stream(websocket: WebSocket):
     await websocket.accept()
     print("WebSocket connected.")
-    try:
-        while True:
-            message = await websocket.receive_text()
-            print(f"Message: {message}")
-            await websocket.send_text(f"Echo: {message}")
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        print("WebSocket closed.")
+
+    gpt_client = GPTClient()
+    await gpt_client.connect()
+
+    audio_stream = AudioStream()
+    response_player = ResponsePlayer()
+    handler = CallHandler(audio_stream, gpt_client, response_player)
+
+    await asyncio.gather(
+        handler.audio_stream.receive_audio(websocket, handler.gpt_client),
+        handler.response_player.send_response(websocket, handler.gpt_client)
+    )

@@ -32,5 +32,5 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        export PYTHONPATH="${{ github.workspace }}"
+        export PYTHONPATH=${GITHUB_WORKSPACE}/voixia
         pytest --cov=app --cov-report=term-missing --cov-config=.coveragerc tests/

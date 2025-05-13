@@ -2,8 +2,8 @@ import os
 import nest_asyncio
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from app.websocket_routes import websocket_router
-from app.sip_server import start_sip_server
+from websocket_routes import websocket_router
+from sip_server import start_sip_server
 from dotenv import load_dotenv
 
 load_dotenv()

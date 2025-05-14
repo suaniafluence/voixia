@@ -23,10 +23,16 @@ jobs:
 
     - name: Deploy to EC2
       run: |
-        ssh ubuntu@13.36.177.25 << 'EOF'
+          ssh ubuntu@13.36.177.25 << 'EOF'
           cd ~/voixia
+          # Nettoyer les fichiers __pycache__ et .pyc pour éviter les conflits de fusion
+          find . -type d -name "__pycache__" -exec rm -r {} +
+          find . -type f -name "*.pyc" -delete
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
+          # Recharger le daemon systemd si les fichiers de service ont changé (bonne pratique)
+          sudo systemctl daemon-reload
           sudo systemctl restart voixia.service
-        EOF
+          EOF
+

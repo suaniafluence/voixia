@@ -5,8 +5,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from websocket_routes import websocket_router
-from sip_server import start_sip_server
+from .websocket_routes import websocket_router
+from .sip_server import start_sip_server
 from dotenv import load_dotenv
 
 load_dotenv()

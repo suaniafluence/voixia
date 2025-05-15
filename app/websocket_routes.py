@@ -1,9 +1,9 @@
 import asyncio
 from fastapi import WebSocket, APIRouter
-from call_handler import CallHandler
-from audio_stream import AudioStream
-from gpt_client import GPTClient
-from response_player import ResponsePlayer
+from app.call_handler import CallHandler
+from app.audio_stream import AudioStream
+from app.gpt_client import GPTClient
+from app.response_player import ResponsePlayer
 
 websocket_router = APIRouter()
 

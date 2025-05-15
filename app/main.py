@@ -4,7 +4,7 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
-from .websocket_routes import websocket_router
+from app.websocket_routes import websocket_router
 from scripts.sip_listener import start_sip_server
 
 load_dotenv()

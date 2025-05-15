@@ -2,12 +2,15 @@
 
 import asyncio
 import types
+import collections
+import collections.abc
 
 # ─── Monkey-patch pour Python 3.11+ ────────────────────────────
 # Rétablit asyncio.coroutine pour les décorateurs legacy d’aiosip
 asyncio.coroutine = types.coroutine
+# Rétablit collections.MutableMapping pour l’import legacy d’aiosip
+collections.MutableMapping = collections.abc.MutableMapping
 
-# ─── Le reste de tes imports ───────────────────────────────────
 from dotenv import load_dotenv
 import aiosip
 import os

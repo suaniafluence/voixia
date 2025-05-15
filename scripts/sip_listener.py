@@ -1,5 +1,3 @@
-# scripts/sip_listener.py
-
 import os
 import asyncio
 import socket
@@ -11,77 +9,96 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─── Configuration SIP & média ───────────────────────────────────────────
+# ─── Config SIP & média ─────────────────────────────────────────────────
 SIP_USERNAME = os.getenv("SIP_USERNAME")
 SIP_PASSWORD = os.getenv("SIP_PASSWORD", "")
 SIP_SERVER   = os.getenv("SIP_SERVER")
 SIP_PORT     = int(os.getenv("SIP_PORT", 5060))
 
-PUBLIC_HOST  = os.getenv("PUBLIC_HOST")           # IP publique ou FQDN
-RTP_PORT     = int(os.getenv("RTP_PORT", 10000))  # port choisi pour RTP
+PUBLIC_HOST  = os.getenv("PUBLIC_HOST")           # IP publique / FQDN
+RTP_PORT     = int(os.getenv("RTP_PORT", 10000))  # port RTP local
 
-# ─── Calcul du Digest MD5 pour REGISTER ──────────────────────────────────
+# ─── Digest MD5 pour REGISTER ────────────────────────────────────────────
 def make_digest_response(challenge: dict) -> str:
-    realm = challenge["realm"]
-    nonce = challenge["nonce"]
-    uri   = f"sip:{SIP_SERVER}"
+    realm, nonce = challenge["realm"], challenge["nonce"]
+    uri = f"sip:{SIP_SERVER}"
     ha1 = hashlib.md5(f"{SIP_USERNAME}:{realm}:{SIP_PASSWORD}".encode()).hexdigest()
     ha2 = hashlib.md5(f"REGISTER:{uri}".encode()).hexdigest()
     return hashlib.md5(f"{ha1}:{nonce}:{ha2}".encode()).hexdigest()
 
-# ─── Protocole RTP minimal (comfort noise) ───────────────────────────────
+# ─── Protocole RTP : header + payload mu-law silence ──────────────────────
 class RTPProtocol(asyncio.DatagramProtocol):
     def __init__(self, remote_media_addr):
         self.remote_media_addr = remote_media_addr
         self.transport = None
+        self.seq = 0
+        self.timestamp = 0
+        self.ssrc = uuid.uuid4().int & 0xFFFFFFFF
 
     def connection_made(self, transport):
         self.transport = transport
         print(f"🎧 RTP socket prêt, envoi vers {self.remote_media_addr}")
 
     def datagram_received(self, data, addr):
-        # Ici on pourrait traiter le flux entrant (ASR, caching, etc.)
+        # flux inbound si besoin (ASR, debug…)
         pass
 
-    async def send_silence(self):
-        # Comfort noise RFC 3389
-        silence_frame = b'\xF8\xFF\xFE'
-        while True:
-            self.transport.sendto(silence_frame, self.remote_media_addr)
-            await asyncio.sleep(0.02)  # toutes les 20 ms
+    def build_rtp_packet(self, payload: bytes) -> bytes:
+        # Version=2, P=0, X=0, CC=0, M=0, PT=0 (PCMU)
+        header0 = 2 << 6
+        header1 = 0 & 0x7F
+        b0 = header0 | header1
+        b1 = 0  # marker=0, payload type=0
+        self.seq = (self.seq + 1) & 0xFFFF
+        self.timestamp = (self.timestamp + len(payload)) & 0xFFFFFFFF
+        pkt = bytearray(12 + len(payload))
+        pkt[0]  = b0
+        pkt[1]  = b1
+        pkt[2:4]  = self.seq.to_bytes(2, 'big')
+        pkt[4:8]  = self.timestamp.to_bytes(4, 'big')
+        pkt[8:12] = self.ssrc.to_bytes(4, 'big')
+        pkt[12:]  = payload
+        return bytes(pkt)
 
-# ─── Protocole SIP (REGISTER, INVITE, ACK, SDP) ──────────────────────────
+    async def send_silence(self):
+        # silence mu-law = 0xFF repeated for 160 samples (20ms @8000Hz)
+        silence_frame = bytes([0xFF]) * 160
+        while True:
+            pkt = self.build_rtp_packet(silence_frame)
+            self.transport.sendto(pkt, self.remote_media_addr)
+            await asyncio.sleep(0.02)  # 20 ms
+
+# ─── Protocole SIP (REGISTER, INVITE, ACK, 200+SDP) ───────────────────────
 class SIPProtocol(asyncio.DatagramProtocol):
     def __init__(self, registrar_addr):
-        self.registrar_addr   = registrar_addr
-        self.transport        = None
-        self.challenge        = None
-        self.registered       = False
+        self.registrar_addr    = registrar_addr
+        self.transport         = None
+        self.challenge         = None
+        self.registered        = False
         self.remote_media_addr = None
-        self.rtp_transport    = None
-        self.rtp_protocol     = None
+        self.rtp_transport     = None
+        self.rtp_protocol      = None
 
     def connection_made(self, transport):
         self.transport = transport
-        print(f"🚀 SIP listener démarré sur 0.0.0.0:{SIP_PORT}")
-        # REGISTER initial
+        print(f"🚀 SIP listener sur 0.0.0.0:{SIP_PORT}")
         asyncio.create_task(self._do_register())
 
     def datagram_received(self, data, addr):
         msg        = data.decode(errors="ignore")
-        first_line = msg.split("\r\n", 1)[0]
+        first_line = msg.split("\r\n",1)[0]
 
-        # ── Challenge Digest 401 Unauthorized ─────────────────────────────
+        # 401 Digest challenge
         if first_line.startswith("SIP/2.0 401"):
             m = re.search(r'WWW-Authenticate:\s*Digest\s+([^\r\n]+)', msg, re.IGNORECASE)
             if m:
                 params = dict(re.findall(r'(\w+)="([^"]+)"', m.group(1)))
                 self.challenge = params
-                print(f"🔐 Challenge reçu (realm={params['realm']}, nonce={params['nonce']})")
+                print(f"🔐 Challenge: realm={params['realm']} nonce={params['nonce']}")
                 asyncio.create_task(self._do_register(challenge=params))
             return
 
-        # ── REGISTER accepté ────────────────────────────────────────────────
+        # REGISTER OK
         if first_line.startswith("SIP/2.0 200") and "CSeq: 1 REGISTER" in msg:
             print("✅ REGISTER accepté")
             if not self.registered:
@@ -89,80 +106,71 @@ class SIPProtocol(asyncio.DatagramProtocol):
                 asyncio.create_task(self._periodic_refresh())
             return
 
-        # ── ACK reçu → session SIP établie ─────────────────────────────────
+        # ACK → session établie
         if first_line.startswith("ACK"):
             print(f"🔗 Session SIP établie avec {addr}")
-            # Dès l'ACK, on lance le média si pas déjà fait
             asyncio.create_task(self._start_media())
             return
 
-        # ── INVITE entrant → répondre 200 OK + SDP ──────────────────────────
+        # INVITE entrant → parse SDP + répondre 200 OK
         if first_line.startswith("INVITE"):
-            print(f"📞 Appel entrant reçu de {addr}")
-
-            # Split headers / body pour parser SDP
-            hdr, body = msg.split("\r\n\r\n", 1)
-            lines     = body.splitlines()
-            # extraire IP & port média
+            print(f"📞 INVITE reçu de {addr}")
+            hdr, body = msg.split("\r\n\r\n",1)
+            lines = body.splitlines()
             c_line = next(l for l in lines if l.startswith("c=IN"))
             m_line = next(l for l in lines if l.startswith("m=audio"))
-            remote_ip   = c_line.split()[-1]
-            remote_port = int(m_line.split()[1])
-            self.remote_media_addr = (remote_ip, remote_port)
+            rip = c_line.split()[-1]
+            rport = int(m_line.split()[1])
+            self.remote_media_addr = (rip, rport)
 
-            # récupérer et conserver les en-têtes SIP
-            hdr_lines = hdr.split("\r\n")
-            vias   = [l for l in hdr_lines if l.startswith("Via:")]
-            from_h = next(l for l in hdr_lines if l.startswith("From:"))
-            to_h   = next(l for l in hdr_lines if l.startswith("To:"))
-            callid = next(l for l in hdr_lines if l.startswith("Call-ID:"))
-            cseq   = next(l for l in hdr_lines if l.startswith("CSeq:"))
+            hdrs = hdr.split("\r\n")
+            vias   = [l for l in hdrs if l.startswith("Via:")]
+            frm    = next(l for l in hdrs if l.startswith("From:"))
+            to     = next(l for l in hdrs if l.startswith("To:"))
+            callid = next(l for l in hdrs if l.startswith("Call-ID:"))
+            cseq   = next(l for l in hdrs if l.startswith("CSeq:"))
 
-            # générer un tag pour To
-            my_tag  = uuid.uuid4().hex[:8]
-            to_resp = f"{to_h};tag={my_tag}"
+            tag = uuid.uuid4().hex[:8]
+            to_tag = f"{to};tag={tag}"
 
-            # préparer le SDP de réponse
-            sdp_body = (
-                "v=0\r\n"
-                f"o=- {int(time.time())} {int(time.time())} IN IP4 {PUBLIC_HOST}\r\n"
-                "s=VoixIA\r\n"
-                f"c=IN IP4 {PUBLIC_HOST}\r\n"
-                "t=0 0\r\n"
-                f"m=audio {RTP_PORT} RTP/AVP 0 8 96\r\n"
-                "a=rtpmap:0 PCMU/8000\r\n"
-                "a=rtpmap:8 PCMA/8000\r\n"
-                "a=rtpmap:96 opus/48000/2\r\n"
-            )
-
-            # construire et envoyer le 200 OK complet
-            response_hdrs = [
+            sdp = "\r\n".join([
+                "v=0",
+                f"o=- {int(time.time())} {int(time.time())} IN IP4 {PUBLIC_HOST}",
+                "s=VoixIA",
+                f"c=IN IP4 {PUBLIC_HOST}",
+                "t=0 0",
+                f"m=audio {RTP_PORT} RTP/AVP 0 8 96",
+                "a=rtpmap:0 PCMU/8000",
+                "a=rtpmap:8 PCMA/8000",
+                "a=rtpmap:96 opus/48000/2",
+                ""
+            ])
+            resp_hdrs = [
                 "SIP/2.0 200 OK",
                 *vias,
-                from_h,
-                to_resp,
+                frm,
+                to_tag,
                 callid,
                 cseq,
                 f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT}>",
                 "Content-Type: application/sdp",
-                f"Content-Length: {len(sdp_body)}",
+                f"Content-Length: {len(sdp)}",
                 ""
             ]
-            resp = "\r\n".join(response_hdrs) + sdp_body
-            self.transport.sendto(resp.encode(), addr)
-            print(f"✔️ 200 OK + SDP envoyé à {addr}")
+            packet = "\r\n".join(resp_hdrs) + sdp
+            self.transport.sendto(packet.encode(), addr)
+            print(f"✔️ 200 OK+SDP → {addr}")
             return
 
-    async def _do_register(self, challenge: dict = None):
-        call_id = str(uuid.uuid4())
-        branch  = "z9hG4bK" + uuid.uuid4().hex
-        tag     = uuid.uuid4().hex[:8]
-        cseq    = 1
+    async def _do_register(self, challenge=None):
+        cid = str(uuid.uuid4())
+        branch = "z9hG4bK" + uuid.uuid4().hex
+        tag = uuid.uuid4().hex[:8]
 
-        auth_hdr = ""
+        auth = ""
         if challenge:
             resp = make_digest_response(challenge)
-            auth_hdr = (
+            auth = (
                 f'Authorization: Digest username="{SIP_USERNAME}", '
                 f'realm="{challenge["realm"]}", '
                 f'nonce="{challenge["nonce"]}", '
@@ -170,34 +178,31 @@ class SIPProtocol(asyncio.DatagramProtocol):
                 f'response="{resp}", algorithm=MD5\r\n'
             )
 
-        register = (
-            f"REGISTER sip:{SIP_SERVER} SIP/2.0\r\n"
-            f"Via: SIP/2.0/UDP 0.0.0.0;branch={branch}\r\n"
-            f"Max-Forwards: 70\r\n"
-            f"To: <sip:{SIP_USERNAME}@{SIP_SERVER}>\r\n"
-            f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={tag}\r\n"
-            f"Call-ID: {call_id}\r\n"
-            f"CSeq: {cseq} REGISTER\r\n"
-            f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT}>\r\n"
-            + auth_hdr +
-            f"Expires: 3600\r\n"
-            f"Content-Length: 0\r\n\r\n"
-        ).encode()
-
-        self.transport.sendto(register, self.registrar_addr)
-        print(f"🔄 REGISTER envoyé{' (auth)' if challenge else ''}")
+        reg = "\r\n".join([
+            f"REGISTER sip:{SIP_SERVER} SIP/2.0",
+            f"Via: SIP/2.0/UDP 0.0.0.0;branch={branch}",
+            "Max-Forwards: 70",
+            f"To: <sip:{SIP_USERNAME}@{SIP_SERVER}>",
+            f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={tag}",
+            f"Call-ID: {cid}",
+            "CSeq: 1 REGISTER",
+            f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT}>",
+            auth.rstrip(),
+            "Expires: 3600",
+            "Content-Length: 0",
+            "", ""
+        ]) + ""
+        self.transport.sendto(reg.encode(), self.registrar_addr)
+        print(f"🔄 REGISTER {'(auth)' if challenge else ''}")
 
     async def _periodic_refresh(self):
         while True:
             await asyncio.sleep(300)
-            asyncio.create_task(self._do_register(challenge=self.challenge))
+            asyncio.create_task(self._do_register(self.challenge))
 
     async def _start_media(self):
-        # bind RTP socket qu'une seule fois
-        if self.rtp_transport is not None:
-            print("ℹ️ RTP handler déjà démarré, réutilisation du socket")
+        if self.rtp_transport:
             return
-
         loop = asyncio.get_running_loop()
         try:
             self.rtp_transport, self.rtp_protocol = await loop.create_datagram_endpoint(
@@ -205,24 +210,20 @@ class SIPProtocol(asyncio.DatagramProtocol):
                 local_addr=('0.0.0.0', RTP_PORT)
             )
             asyncio.create_task(self.rtp_protocol.send_silence())
-            print(f"✅ RTP handler démarré, silence envoyé sur {RTP_PORT}")
+            print(f"✅ RTP handler démarré, silence sur {RTP_PORT}")
         except OSError as e:
-            print(f"❌ Impossible de binder le socket RTP : {e}")
+            print(f"❌ Impossible de binder RTP : {e}")
 
-# ─── Point d’entrée pour FastAPI (startup handler) ───────────────────────
+# ─── Entrypoint (startup FastAPI) ─────────────────────────────────────────
 async def start_sip_server():
     loop = asyncio.get_running_loop()
-    # résolution DNS du registrar SIP
     infos = socket.getaddrinfo(SIP_SERVER, SIP_PORT,
                                family=socket.AF_UNSPEC,
                                type=socket.SOCK_DGRAM)
-    registrar_addr = infos[0][4]  # (ip, port)
-
+    registrar_addr = infos[0][4]
     protocol = SIPProtocol(registrar_addr)
     await loop.create_datagram_endpoint(
         lambda: protocol,
         local_addr=('0.0.0.0', SIP_PORT)
     )
-
-    # bloque la coroutine pour garder le serveur up
     await asyncio.Event().wait()

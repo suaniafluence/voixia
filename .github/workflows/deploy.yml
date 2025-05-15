@@ -19,20 +19,26 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_AWS }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H  13.36.177.25 >> ~/.ssh/known_hosts
+        ssh-keyscan -H 13.36.177.25 >> ~/.ssh/known_hosts
 
     - name: Deploy to EC2
       run: |
-          ssh ubuntu@13.36.177.25 << 'EOF'
+        ssh ubuntu@13.36.177.25 << 'EOF'
           cd ~/voixia
-          # Nettoyer les fichiers __pycache__ et .pyc pour éviter les conflits de fusion
-          find . -type d -name "__pycache__" -exec rm -r {} +
+
+          # 1️⃣ On efface tout cache/PYC pour repartir sur du propre
+          find . -type d -name "__pycache__" -exec rm -rf {} +
           find . -type f -name "*.pyc" -delete
-          git pull origin main
+
+          # 2️⃣ On synchronise sans conflit
+          git fetch origin main
+          git reset --hard origin/main
+
+          # 3️⃣ On recharge l’environnement et la config
           source venv/bin/activate
           pip install -r requirements.txt
-          # Recharger le daemon systemd si les fichiers de service ont changé (bonne pratique)
+
+          # 4️⃣ On redémarre le service
           sudo systemctl daemon-reload
           sudo systemctl restart voixia.service
-          EOF
-
+        EOF

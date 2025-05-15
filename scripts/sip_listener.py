@@ -26,6 +26,26 @@ def make_digest_response(challenge: dict) -> str:
     ha2 = hashlib.md5(f"REGISTER:{uri}".encode()).hexdigest()
     return hashlib.md5(f"{ha1}:{nonce}:{ha2}".encode()).hexdigest()
 
+class RTPProtocol(asyncio.DatagramProtocol):
+    def __init__(self, remote_addr):
+        self.remote_addr = remote_addr  # où envoyer le media
+        self.transport = None
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        # data = paquet RTP reçu depuis OVH (PCM mu-law)
+        # ici tu pourrais l’asservir à ton ASR, ou juste ignorer
+        pass
+
+    async def send_silence(self):
+        # Exemple : envoyer des paquets silence pour retenir l’appel
+        silence_frame = b'\xF8\xFF\xFE'  # comfort noise NTP silence (RFC 3389)
+        while True:
+            self.transport.sendto(silence_frame, self.remote_addr)
+            await asyncio.sleep(0.02)  # 20 ms
+
 class SIPProtocol(asyncio.DatagramProtocol):
     def __init__(self, remote_addr):
         self.remote_addr = remote_addr
@@ -63,8 +83,10 @@ class SIPProtocol(asyncio.DatagramProtocol):
         # ACK reçu → session établie
         if first_line.startswith("ACK"):
             print(f"🔗 Session établie avec {addr}")
+            # Démarre le media handler
+            asyncio.create_task(self._start_media())
             return
-
+    
         # INVITE entrant → répondre 200 OK avec SDP
         if first_line.startswith("INVITE"):
             print(f"📞 Appel entrant reçu de {addr}")
@@ -111,6 +133,23 @@ class SIPProtocol(asyncio.DatagramProtocol):
             self.transport.sendto(resp.encode(), addr)
             print(f"✔️ 200 OK + SDP envoyé à {addr}")
             return
+        
+    async def _start_media(self):
+        """
+        - Ouvre un socket RTP en UDP sur RTP_PORT
+        - Lit ce que renvoie ton pipeline IA (audio PCM)
+        - Emballe en paquets RTP et envoie à self.remote_addr_media
+        - (Optionnel) recoit le flux audio et le traite
+        """
+        loop = asyncio.get_running_loop()
+        # bind sur le port RTP pour recevoir (et envoyer) le média
+        transport, protocol = await loop.create_datagram_endpoint(
+            lambda: RTPProtocol(self.remote_addr),  
+            local_addr=(PUBLIC_HOST, RTP_PORT)
+        )
+        # maintien de l’appel en envoyant du silence
+        asyncio.create_task(protocol.send_silence())
+        print(f"🎧 RTP handler démarré sur {PUBLIC_HOST}:{RTP_PORT}")
 
     async def _do_register(self, challenge: dict = None):
         call_id = str(uuid.uuid4())

@@ -14,7 +14,8 @@ SIP_USERNAME = os.getenv("SIP_USERNAME")
 SIP_PASSWORD = os.getenv("SIP_PASSWORD", "")
 SIP_SERVER   = os.getenv("SIP_SERVER")
 SIP_PORT     = int(os.getenv("SIP_PORT", 5060))
-CONTACT_URI  = f"sip:{SIP_USERNAME}@{SIP_SERVER}"
+PUBLIC = os.getenv("PUBLIC_HOST")
+CONTACT_URI = f"sip:{SIP_USERNAME}@{PUBLIC}:{SIP_PORT}"
 
 def make_digest_response(challenge: dict) -> str:
     """
@@ -117,7 +118,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
             f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={tag}\r\n"
             f"Call-ID: {call_id}\r\n"
             f"CSeq: {cseq} REGISTER\r\n"
-            f"Contact: <{CONTACT_URI}:5060>\r\n"
+            f"Contact: <{CONTACT_URI}>\r\n"
             + auth_hdr +
             f"Expires: 3600\r\n"
             f"Content-Length: 0\r\n\r\n"

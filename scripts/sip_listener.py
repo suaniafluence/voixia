@@ -30,11 +30,12 @@ def make_digest_response(challenge: dict) -> str:
     return resp
 
 class SIPProtocol(asyncio.DatagramProtocol):
-    def __init__(self):
+    def __init__(self, remote_addr):
+        self.remote_addr = remote_addr
         self.transport = None
         self.challenge = None
         self.registered = False
-
+    # …
     def connection_made(self, transport):
         self.transport = transport
         print(f"🚀 SIP listener démarré sur 0.0.0.0:{SIP_PORT}")
@@ -121,7 +122,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
             f"Expires: 3600\r\n"
             f"Content-Length: 0\r\n\r\n"
         ).encode()
-        self.transport.sendto(register, (SIP_SERVER, SIP_PORT))
+        self.transport.sendto(register, self.remote_addr)
         print(f"🔄 REGISTER envoyé{' (auth)' if challenge else ''}")
 
     async def _periodic_refresh(self):
@@ -134,10 +135,18 @@ class SIPProtocol(asyncio.DatagramProtocol):
 
 async def start_sip_server():
     loop = asyncio.get_running_loop()
-    # 1) Démarre le listener UDP
+
+    # ─── Résolution DNS préalable ───────────────────────────────
+    infos = socket.getaddrinfo(SIP_SERVER, SIP_PORT,
+                               family=socket.AF_UNSPEC,
+                               type=socket.SOCK_DGRAM)
+    # on prend la première adresse utilisable
+    remote_addr = infos[0][4]  # ex. ("93.184.216.34", 5060)
+
+    # 1) Démarre le listener UDP en injectant remote_addr dans le protocole
+    protocol = SIPProtocol(remote_addr)
     await loop.create_datagram_endpoint(
-        lambda: SIPProtocol(),
+        lambda: protocol,
         local_addr=('0.0.0.0', SIP_PORT)
     )
-    # 2) Garde le serveur en vie
-    await asyncio.Event().wait()
+    # …

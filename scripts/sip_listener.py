@@ -40,8 +40,42 @@ class RTPProtocol(asyncio.DatagramProtocol):
         print(f"🎧 RTP socket prêt, envoi vers {self.remote_media_addr}")
 
     def datagram_received(self, data, addr):
-        # flux inbound si besoin (ASR, debug…)
-        pass
+        msg        = data.decode(errors="ignore")
+        first_line = msg.split("\r\n", 1)[0]
+
+        # … 401, REGISTER, ACK …
+
+        if first_line.startswith("INVITE"):
+            print(f"📞 Appel entrant reçu de {addr}")
+
+            # 1️⃣ 100 Trying
+            trying = "SIP/2.0 100 Trying\r\nContent-Length: 0\r\n\r\n"
+            self.transport.sendto(trying.encode(), addr)
+
+            # 2️⃣ 180 Ringing
+            ringing = "SIP/2.0 180 Ringing\r\nContent-Length: 0\r\n\r\n"
+            self.transport.sendto(ringing.encode(), addr)
+            print("⏳ Envoi d'un 180 Ringing")
+
+            # Scinder headers et SDP du body pour la 200 OK plus tard
+            hdr, body = msg.split("\r\n\r\n", 1)
+
+            # Lance l’envoi du 200 OK + SDP en tâche différée
+            asyncio.create_task(self._delayed_200_ok(addr, hdr, body))
+            return
+
+    async def _delayed_200_ok(self, addr, hdr, body):
+        # Laisse sonner un peu
+        await asyncio.sleep(1)
+
+        # → parser hdr/body, extraire c=, m=… comme avant
+        # → construire sdp_body (identique à ton code précédent)
+        # → assembler response_hdrs avec To-tag, Contact, Content-Type, etc.
+        packet = ...  # ton 200 OK + SDP complet
+
+        self.transport.sendto(packet.encode(), addr)
+        print(f"✔️ 200 OK + SDP envoyé à {addr}")
+
 
     def build_rtp_packet(self, payload: bytes) -> bytes:
         # Version=2, P=0, X=0, CC=0, M=0, PT=0 (PCMU)

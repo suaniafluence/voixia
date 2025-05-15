@@ -145,7 +145,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
         # bind sur le port RTP pour recevoir (et envoyer) le média
         transport, protocol = await loop.create_datagram_endpoint(
             lambda: RTPProtocol(self.remote_addr),  
-            local_addr=(PUBLIC_HOST, RTP_PORT)
+            local_addr=('0.0.0.0', RTP_PORT)
         )
         # maintien de l’appel en envoyant du silence
         asyncio.create_task(protocol.send_silence())

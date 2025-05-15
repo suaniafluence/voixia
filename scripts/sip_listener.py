@@ -1,9 +1,17 @@
 # scripts/sip_listener.py
 
-import os
 import asyncio
+import types
+
+# ─── Monkey-patch pour Python 3.11+ ────────────────────────────
+# Rétablit asyncio.coroutine pour les décorateurs legacy d’aiosip
+asyncio.coroutine = types.coroutine
+
+# ─── Le reste de tes imports ───────────────────────────────────
 from dotenv import load_dotenv
 import aiosip
+import os
+
 
 # 1️⃣ Charge le .env
 load_dotenv()

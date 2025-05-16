@@ -1,14 +1,7 @@
 import sys
-import asyncio
-
-# Shim Python 3.11+ : recrée asyncio.coroutine pour les libs legacy
-try:
-    _ = asyncio.coroutine
-except AttributeError:
-    def coroutine(func):
-        return func
-    asyncio.coroutine = coroutine
 import os
+import patch_imports  # noqa
+from aiosip import Application, UDPTransport
 import asyncio
 import logging
 from dotenv import load_dotenv

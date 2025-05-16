@@ -1,7 +1,6 @@
-# requirements.txt (prod)
 fastapi>=0.95.0
 uvicorn[standard]>=0.22.0
-asterisk-ari==1.0.1
+ari-py>=0.7.0
 websockets>=11.0
 python-dotenv>=1.0.0
 numpy>=1.24.0

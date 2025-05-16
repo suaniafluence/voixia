@@ -1,6 +1,6 @@
 # requirements.txt (prod)
 # SIP/VoIP
-
+PySIPio
 pysip     # Alternative plus complète pour SIP/RTP
 sounddevice>=0.4.6  # Capture audio (si nécessaire)
 scipy>=1.10.0       # Traitement audio (WAV, etc.)

@@ -1,35 +1,56 @@
-    - name: SSH → git clone / pull & restart
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        script: |
-          APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
+# .github/workflows/deploy.yml
+name: CD Deploy to EC2
 
-          # Clone ou update
-          if [ ! -d "$APP_DIR" ]; then
-            git clone https://github.com/${GITHUB_REPOSITORY}.git "$APP_DIR"
-          else
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Clone & Déployer sur EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout metadata
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SSH → git clone / pull & restart
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
+
+            # Clone ou update
+            if [ ! -d "$APP_DIR" ]; then
+              git clone https://github.com/${GITHUB_REPOSITORY}.git "$APP_DIR"
+            else
+              cd "$APP_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
             cd "$APP_DIR"
-            git fetch origin main
-            git reset --hard origin/main
-          fi
 
-          cd "$APP_DIR"
+            # (Pas de chown : git crée déjà avec le bon user)
 
-          # (Plus de chown ici)
+            # Prépare / active le venv
+            if [ ! -d .venv ]; then
+              python3 -m venv .venv
+            fi
+            source .venv/bin/activate
 
-          # Venv
-          if [ ! -d .venv ]; then
-            python3 -m venv .venv
-          fi
-          source .venv/bin/activate
+            # Installe / met à jour les dépendances
+            pip install --upgrade pip
+            pip install -r requirements.txt
 
-          # Déps & restart
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-          sudo systemctl daemon-reload
-          sudo systemctl restart voixia.service
+            # Recharge systemd et redémarre l’app
+            sudo systemctl daemon-reload
+            sudo systemctl restart voixia.service

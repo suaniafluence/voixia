@@ -1,6 +1,7 @@
 import os, asyncio, logging
 from dotenv import load_dotenv
 from PySIP.sip_core import Call as SipCall
+import PySIP.sip_account as sa
 
 # ─── Config ───────────────────────────────────────
 load_dotenv()
@@ -14,7 +15,7 @@ log = logging.getLogger("sip_listener")
 
 async def run():
     # Création du compte et inscription automatique toutes les 300s
-    account = SipAccount(USER, PASS, f"{SRV}:{PORT}", refresh=300)
+    account = sa(USER, PASS, f"{SRV}:{PORT}", refresh=300)
 
     # Gestion des appels entrants
     @account.on_incoming_call

@@ -6,7 +6,10 @@ scipy>=1.10.0       # Traitement audio (WAV, etc.)
 # Utilitaires
 uuid>=1.30          # Génération d'identifiants uniques
 requests>=2.28      # Pour requêtes HTTP (si intégration API)
-aiosip==0.2.0
+# SIP/OVH Core
+aiosip==0.9.0
+# Performance (optionnel mais recommandé)
+uvloop==0.17.0 ; sys_platform != 'win32'
 fastapi==0.115.12
 uvicorn[standard]==0.30.6
 websockets==13.1

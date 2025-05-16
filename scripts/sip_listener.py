@@ -1,16 +1,20 @@
-if sys.version_info >= (3, 11):
-    from asyncio import coroutines
-    asyncio.coroutine = coroutines.coroutine
-else:
-    from asyncio import coroutine
-    # scripts/sip_listener.py
+import sys
+import asyncio
+
+# Shim Python 3.11+ : recrée asyncio.coroutine pour les libs legacy
+try:
+    _ = asyncio.coroutine
+except AttributeError:
+    def coroutine(func):
+        return func
+    asyncio.coroutine = coroutine
 import os
 import asyncio
 import logging
 from dotenv import load_dotenv
 import aiosip
 from aiosip.auth import Auth
-import sys
+
 import asyncio
 
 

@@ -229,21 +229,19 @@ class SIPProtocol(asyncio.DatagramProtocol):
         
         # Construction du message avec les nouveaux headers
         reg = "\r\n".join([
-            f"REGISTER sip:{SIP_SERVER} SIP/2.0",
-            f"Via: SIP/2.0/UDP 0.0.0.0;branch={branch}",
-            "Max-Forwards: 70",
-            f"To: <sip:{SIP_USERNAME}@{SIP_SERVER}>",
-            f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={tag}",
-            f"Call-ID: {self.call_id}",
-            f"CSeq: {self.cseq} REGISTER",
-            f"Contact: {REGISTER_HEADERS['Contact']}",  # Surcharge le Contact précédent
-            f"User-Agent: {REGISTER_HEADERS['User-Agent']}",
-            f"Expires: {REGISTER_HEADERS['Expires']}",
-            f"Allow: {REGISTER_HEADERS['Allow']}",
-            auth.rstrip(),
-            "Content-Length: 0",
-            "", ""
-        ])
+                f"REGISTER sip:{SIP_SERVER} SIP/2.0",
+                f"Via: SIP/2.0/UDP {PUBLIC_HOST}:{SIP_PORT};branch=z9hG4bK{uuid.uuid4().hex}",
+                f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={uuid.uuid4().hex[:8]}",
+                f"To: <sip:{SIP_USERNAME}@{SIP_SERVER}>",
+                f"Call-ID: {uuid.uuid4().hex}@{SIP_SERVER}",
+                "CSeq: 1 REGISTER",
+                f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT};transport=udp>",
+                "User-Agent: OVH-Compatible/1.0",
+                "Expires: 300",
+                "Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE",
+                "Content-Length: 0",  # Une seule occurrence
+                "",  # Double \r\n pour finir le message
+            ])
         # Debug avant envoi
         print(f"🔄 Envoi REGISTER à {self.registrar_addr}")
         print(f"Message complet:\n{reg}")  # Optionnel : affiche tout le message SIP

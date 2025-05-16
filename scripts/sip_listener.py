@@ -280,12 +280,8 @@ class SIPProtocol(asyncio.DatagramProtocol):
         self.rtp_ports.clear()  # NEW: Nettoyage ports
 
 # ─── Intégration FastAPI ────────────────────────────────────────────────
-async def start_sip_server():
+async def start_sip_server(registrar_addr=None):
     loop = asyncio.get_running_loop()
-    infos = socket.getaddrinfo(SIP_SERVER, SIP_PORT,
-                               family=socket.AF_UNSPEC,
-                               type=socket.SOCK_DGRAM)
-    registrar_addr = infos[0][4]
     protocol = SIPProtocol(registrar_addr)
     await loop.create_datagram_endpoint(
         lambda: protocol,

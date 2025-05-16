@@ -1,63 +1,35 @@
-# .github/workflows/deploy.yml
-name: CD Deploy to EC2
+    - name: SSH → git clone / pull & restart
+      uses: appleboy/ssh-action@v0.1.8
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
+        script: |
+          APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+          # Clone ou update
+          if [ ! -d "$APP_DIR" ]; then
+            git clone https://github.com/${GITHUB_REPOSITORY}.git "$APP_DIR"
+          else
+            cd "$APP_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+          fi
 
-jobs:
-  deploy:
-    name: Déployer la branche main sur EC2
-    runs-on: ubuntu-latest
+          cd "$APP_DIR"
 
-    steps:
-      - name: Checkout code (main)
-        uses: actions/checkout@v4
-        with:
-          ref: main
+          # (Plus de chown ici)
 
-      - name: Package application
-        run: |
-          git archive --format=tar.gz --output=voixia.tar.gz HEAD
+          # Venv
+          if [ ! -d .venv ]; then
+            python3 -m venv .venv
+          fi
+          source .venv/bin/activate
 
-      - name: Copy tarball to EC2 home
-        uses: appleboy/scp-action@v0.1.2
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "voixia.tar.gz"
-          target: "/home/${{ secrets.EC2_USER }}/voixia.tar.gz"
+          # Déps & restart
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Unpack & restart service
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            # Aller dans le home de l'utilisateur
-            cd /home/${{ secrets.EC2_USER }}
-
-            # Créer/réinitialiser le dossier de déploiement
-            mkdir -p voixia
-            chown $USER:$USER voixia
-
-            # Décompresser à l'intérieur
-            tar xzf voixia.tar.gz -C voixia
-
-            # Installer/mettre à jour le venv
-            cd voixia
-            if [ ! -d .venv ]; then
-              python3 -m venv .venv
-            fi
-            source .venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-
-            # Redémarrer le service systemd
-            sudo systemctl restart voixia.service
+          sudo systemctl daemon-reload
+          sudo systemctl restart voixia.service

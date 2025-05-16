@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml
 name: CD Deploy to EC2
 
 on:
@@ -30,13 +31,19 @@ jobs:
             APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
             REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
 
-            echo "→ Dans $APP_DIR : clone ou mise à jour du repo"
-            if [ ! -d "$APP_DIR/.git" ]; then
+            echo "→ Gestion du répertoire $APP_DIR"
+            if [ ! -d "$APP_DIR" ]; then
+              echo "  • Clonage du repo dans $APP_DIR"
               git clone "$REPO_URL" "$APP_DIR"
-            else
+            elif [ -d "$APP_DIR/.git" ]; then
+              echo "  • Mise à jour du repo existant"
               cd "$APP_DIR"
               git fetch origin main
               git reset --hard origin/main
+            else
+              echo "  • Attention : $APP_DIR existe sans .git, on le recrée"
+              rm -rf "$APP_DIR"
+              git clone "$REPO_URL" "$APP_DIR"
             fi
 
             cd "$APP_DIR"

@@ -241,7 +241,16 @@ class SIPProtocol(asyncio.DatagramProtocol):
             "Content-Length: 0",
             "", ""
         ])
-        self.transport.sendto(reg.encode(), self.registrar_addr)
+        # Debug avant envoi
+        print(f"🔄 Envoi REGISTER à {self.registrar_addr}")
+        print(f"Message complet:\n{reg}")  # Optionnel : affiche tout le message SIP
+        
+        try:
+            self.transport.sendto(reg.encode(), self.registrar_addr)
+            print(f"✅ REGISTER envoyé à {time.strftime('%H:%M:%S')}")
+        except Exception as e:
+            print(f"❌ Échec envoi REGISTER: {str(e)}")
+            raise
 
     # NEW: Rafraîchissement basé sur Expires serveur
     async def _periodic_refresh(self, expires):

@@ -196,7 +196,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
         resp = [
             "SIP/2.0 200 OK",
             f"Call-ID: {call_id}",
-            f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT}>",
+            f"Contact: <sip:{SIP_USERNAME}@{SIP_SERVER}:{SIP_PORT}>",
             "Content-Type: application/sdp",
             f"Content-Length: {len(sdp)}",
             "",

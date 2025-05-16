@@ -1,7 +1,6 @@
 import os, asyncio, logging
 from dotenv import load_dotenv
-from PySIP.sip_account import SipAccount
-from PySIP.sip_core    import SipCall
+from PySIP.sip_core import Call as SipCall
 
 # ─── Config ───────────────────────────────────────
 load_dotenv()

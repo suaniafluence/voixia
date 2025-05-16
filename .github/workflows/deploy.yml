@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: CD Deploy to EC2
 
 on:
@@ -8,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Pull & Déployer Voixia (sans delete)
+  ev2voix:
+    name: ev2voix
     runs-on: ubuntu-latest
 
     steps:
@@ -29,36 +28,19 @@ jobs:
             set -e
 
             APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
-            REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
 
-            echo "→ Dans $APP_DIR : préparation du Git"
-            if [ ! -d "$APP_DIR" ]; then
-              echo "  • Dossier inexistant : clone complet"
-              git clone "$REPO_URL" "$APP_DIR"
-            else
-              cd "$APP_DIR"
-              if [ ! -d .git ]; then
-                echo "  • Pas de .git : initialisation repo sans toucher aux conf"
-                git init
-                git remote add origin "$REPO_URL"
-              fi
-              echo "  • Pull du code (main)"
-              git fetch origin main
-              git reset --hard origin/main
-            fi
-
+            echo "→ Vérification du repo Git dans $APP_DIR"
             cd "$APP_DIR"
 
-            echo "→ Vérification de requirements.txt"
-            [ -f requirements.txt ] || { echo "🛑 requirements.txt introuvable"; exit 1; }
+            echo "→ Fetch origin/main"
+            git fetch origin main
+            echo "→ Reset hard to origin/main"
+            git reset --hard origin/main
 
-            echo "→ Création/activation du venv"
-            if [ ! -d .venv ]; then
-              python3.11 -m venv .venv
-            fi
+            echo "→ Activation du venv"
             source .venv/bin/activate
 
-            echo "→ Upgrade pip & installation des dépendances"
+            echo "→ Installation des dépendances"
             pip install --upgrade pip
             pip install -r requirements.txt
 

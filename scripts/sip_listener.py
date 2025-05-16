@@ -42,9 +42,6 @@ class RTPProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        msg = data.decode(errors="ignore")
-        if "REGISTER" in msg or "SIP/2.0" in msg:  # Filtre SIP seulement
-            print(f"📥 Réçue depuis {addr}:\n{msg[:500]}...")  # Truncate long messages
         pass  # Toujours utile pour keep-alive NAT
 
     def build_rtp_packet(self, payload: bytes) -> bytes:
@@ -93,6 +90,10 @@ class SIPProtocol(asyncio.DatagramProtocol):
 
     def datagram_received(self, data, addr):
         msg = data.decode(errors="ignore")
+        if "REGISTER" in msg or "SIP/2.0" in msg:  # Filtre SIP seulement
+            print(f"📥 Réçue depuis {addr}:\n{msg[:500]}...")  # Truncate long messages
+        if "SIP/2.0" in msg:  # Toutes les réponses SIP
+            print(f"📥 Réponse OVH:\n{msg[:500]}")
         first_line = msg.split("\r\n",1)[0]
 
         # NEW: Extraction Call-ID pour routage

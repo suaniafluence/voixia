@@ -4,3 +4,5 @@ SIP_SERVER=sip.ovh.net
 SIP_PORT=5060
 SIP_USERNAME=your-username@sip.ovh.net
 SIP_PASSWORD=your-password
+PUBLIC_HOST=172.0.0.0
+RTP_PORT=10000  # Défaut dans le code

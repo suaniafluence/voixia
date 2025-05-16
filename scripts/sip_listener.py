@@ -76,6 +76,8 @@ class SIPProtocol(asyncio.DatagramProtocol):
         self.active_calls      = {}  # NEW: Dictionnaire des appels par Call-ID
         self.call_id           = uuid.uuid4().hex  # NEW: Call-ID persistant
         self.cseq              = 0   # NEW: CSeq incrémental
+        self.last_error = None  # NEW: Stockage dernière erreur
+        self.rtp_ports = set() # NEW: Suivi des ports RTP actifs
         
         # NEW: Gestion des tâches pour nettoyage
         self.register_task     = None
@@ -256,8 +258,9 @@ class SIPProtocol(asyncio.DatagramProtocol):
                 "task": asyncio.create_task(protocol.send_silence())
             }
             self.rtp_transports.append(transport)
+            self.rtp_ports.add(RTP_PORT)
         except OSError as e:
-            print(f"❌ RTP failed: {e}")
+            self.last_error = f"RTP error: {str(e)}"  # NEW: Log erreur
 
     # NEW: Nettoyage des ressources
     async def stop(self):
@@ -274,6 +277,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
             if call.get("rtp"):
                 call["rtp"]["protocol"].is_active = False
                 call["rtp"]["task"].cancel()
+        self.rtp_ports.clear()  # NEW: Nettoyage ports
 
 # ─── Intégration FastAPI ────────────────────────────────────────────────
 async def start_sip_server():

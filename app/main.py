@@ -1,11 +1,15 @@
-import os
-from fastapi import FastAPI, Response
-from fastapi.responses import JSONResponse, PlainTextResponse
-from dotenv import load_dotenv
-from scripts.sip_listener import start_sip_server, stop_sip_server
-from prometheus_client import generate_latest, Gauge, CollectorRegistry
-import socket
-
+try: 
+    import os
+    import sys
+    from fastapi import FastAPI, Response
+    from fastapi.responses import JSONResponse, PlainTextResponse
+    from dotenv import load_dotenv
+    from scripts.sip_listener import start_sip_server, stop_sip_server
+    from prometheus_client import generate_latest, Gauge, CollectorRegistry
+    import socket
+except ImportError as e:
+    print(f"❌ Module manquant: {e}")
+    sys.exit(1)
 # Configuration initiale
 load_dotenv()
 
@@ -85,6 +89,10 @@ async def healthcheck():
         rtp_ports.set(len(sip_protocol.rtp_ports))
     
     return status
+
+@app.get("/ping")
+async def ping():
+    return PlainTextResponse("pong")
 
 @app.get("/metrics")
 async def metrics():

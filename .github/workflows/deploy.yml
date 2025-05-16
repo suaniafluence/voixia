@@ -13,21 +13,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code (branche main)
+      - name: Checkout code (main)
         uses: actions/checkout@v4
         with:
           ref: main
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
 
       - name: Package application
         run: |
           git archive --format=tar.gz --output=voixia.tar.gz HEAD
 
-      - name: Copy to EC2
+      - name: Copy tarball to EC2 home
         uses: appleboy/scp-action@v0.1.2
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -35,7 +30,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "voixia.tar.gz"
-          target: "/home/${{ secrets.EC2_USER }}/voixia/"
+          target: "/home/${{ secrets.EC2_USER }}/voixia.tar.gz"
 
       - name: Unpack & restart service
         uses: appleboy/ssh-action@v0.1.8
@@ -45,8 +40,24 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            cd /home/${{ secrets.EC2_USER }}/voixia
-            tar xzf voixia.tar.gz
-            source .venv/bin/activate || python3 -m venv .venv && source .venv/bin/activate
+            # Aller dans le home de l'utilisateur
+            cd /home/${{ secrets.EC2_USER }}
+
+            # Créer/réinitialiser le dossier de déploiement
+            mkdir -p voixia
+            chown $USER:$USER voixia
+
+            # Décompresser à l'intérieur
+            tar xzf voixia.tar.gz -C voixia
+
+            # Installer/mettre à jour le venv
+            cd voixia
+            if [ ! -d .venv ]; then
+              python3 -m venv .venv
+            fi
+            source .venv/bin/activate
+            pip install --upgrade pip
             pip install -r requirements.txt
+
+            # Redémarrer le service systemd
             sudo systemctl restart voixia.service

@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: CD Deploy to EC2
 
 on:
@@ -9,16 +8,16 @@ on:
 
 jobs:
   deploy:
-    name: Clone & Déployer sur EC2
+    name: Clone, Setup & Restart Voixia
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout metadata
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: SSH → git clone / pull & restart
+      - name: SSH → Pull & Deploy
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -26,11 +25,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
+            set -e
 
-            # Clone ou update
-            if [ ! -d "$APP_DIR" ]; then
-              git clone https://github.com/${GITHUB_REPOSITORY}.git "$APP_DIR"
+            APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
+            REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+
+            echo "→ Dans $APP_DIR : clone ou mise à jour du repo"
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
             else
               cd "$APP_DIR"
               git fetch origin main
@@ -39,18 +41,19 @@ jobs:
 
             cd "$APP_DIR"
 
-            # (Pas de chown : git crée déjà avec le bon user)
+            echo "→ Vérification de requirements.txt"
+            [ -f requirements.txt ] || { echo "🛑 requirements.txt manquant"; exit 1; }
 
-            # Prépare / active le venv
+            echo "→ Création/activation du venv"
             if [ ! -d .venv ]; then
-              python3 -m venv .venv
+              python3.11 -m venv .venv
             fi
             source .venv/bin/activate
 
-            # Installe / met à jour les dépendances
+            echo "→ Upgrade pip & installation des dépendances"
             pip install --upgrade pip
             pip install -r requirements.txt
 
-            # Recharge systemd et redémarre l’app
+            echo "→ Reload systemd & restart voixia.service"
             sudo systemctl daemon-reload
             sudo systemctl restart voixia.service

@@ -1,6 +1,6 @@
 import os, asyncio, logging
 from dotenv import load_dotenv
-from PySIP.sip_core import Call as SipCall
+from PySIP.sip_core import SomeCallClass as SipCall
 import PySIP.sip_account as sa
 
 # ─── Config ───────────────────────────────────────
@@ -24,9 +24,6 @@ async def run():
         await call.answer(180)       # 180 Ringing
         await asyncio.sleep(1)
         await call.answer(200)       # 200 OK → session établie
-        # Ici, PySIP n’a pas de générateur de silence intégré.
-        # Vous pouvez lire un fichier WAV mu-law vide si besoin :
-        # await call.call_handler.play("silence.ulaw")
         await asyncio.sleep(10)      # durée d’attente
         await call.call_handler.hangup()
         log.info(f"✖️ Appel {call.info.call_id} terminé")

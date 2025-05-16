@@ -1,0 +1,14 @@
+# app/audio_utils.py
+import numpy as np
+
+def mulaw2linear(data: bytes) -> np.ndarray:
+    ulaw = np.frombuffer(data, dtype=np.uint8)
+    # Table G.711 μ-law simplifiée
+    pcm = ((ulaw.astype(np.int16) - 128) << 8)
+    return pcm
+
+
+def linear2mulaw(pcm_bytes: bytes) -> bytes:
+    arr = np.frombuffer(pcm_bytes, dtype=np.int16)
+    ulaw = ((arr >> 8) + 128).astype(np.uint8)
+    return ulaw.tobytes()

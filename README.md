@@ -1,99 +1,81 @@
-# 🎙️ VoixIA — Assistant vocal intelligent via SIP + OpenAI Realtime API
+# 🎙️ Voixia
 
-![Tests](https://github.com/suaniafluence/voixia/actions/workflows/python-tests.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
+voixia transforme vos appels téléphoniques en conversations animées avec un assistant IA en temps réel, propulsé par Asterisk et l’API Realtime d’OpenAI.
 
-**VoixIA** est un MVP d'assistant vocal connecté à l'API Realtime de OpenAI via un serveur SIP auto-hébergé.
+🛠️ Prérequis
 
-## 🚀 Fonctionnalités
+Python 3.11+
 
-- Réception d’appels via une ligne **SIP OVH**
-- Streaming audio vers **l’API Realtime OpenAI (GPT-4o)**
-- Réponses vocales synthétisées et renvoyées à l’appelant
-- Architecture 100% Python avec **FastAPI**, **WebSocket**, **Twisted SIP**
-- Fonctionne sans Twilio ni Ngrok
+Asterisk 18+ (avec ARI activé)
 
----
+Un compte OVH SIP (trunk SIP configuré)
 
-## 📁 Structure du projet
+Clé API OpenAI avec accès au modèle Realtime
 
-```
-voixia/
-├── app/
-│   ├── main.py
-│   ├── websocket_routes.py
-│   ├── sip_server.py
-│   ├── call_handler.py
-│   ├── gpt_client.py
-│   ├── audio_stream.py
-│   └── response_player.py
-├── tests/
-├── .env.example
-├── requirements.txt
-└── .github/workflows/python-tests.yml
-```
+Environnement Unix (Linux, macOS)
 
----
+pip pour installer les dépendances
 
-## 🔐 Configuration
+🚀 Installation
 
-1. Copiez `.env.example` en `.env`
-2. Remplissez vos variables :
+Cloner le dépôt
 
-```env
-OPENAI_API_KEY=sk-...
-VOICE=alloy
-SIP_SERVER=sip.ovh.net
-SIP_PORT=5060
-SIP_USERNAME=...
-SIP_PASSWORD=...
-```
+git clone https://github.com/ton-org/voixia.git
+cd voixia
 
----
+Créer et configurer votre environnement virtuel
 
-## 🛠️ Installation
+python -m venv .venv
+source .venv/bin/activate
 
-```bash
-python -m venv venv
-source venv/bin/activate
+Installer les dépendances
+
 pip install -r requirements.txt
-```
 
----
+Configurer les variables d’environnement dans un fichier .env à la racine :
 
-## ▶️ Lancement
+OPENAI_API_KEY=sk-…
+ARI_USER=voixia_user
+ARI_PASS=unSecretDeFolie
+ASTERISK_URL=http://localhost:8088
+PORT=8000
 
-```bash
-python app/main.py
-```
+Copier les fichiers de config Asterisk dans /etc/asterisk/ :
 
----
+pjsip.conf
 
-## 🧪 Tests
+extensions.conf
 
-```bash
-pip install pytest pytest-asyncio pytest-cov
-pytest --cov=app tests/
-```
+⚙️ Architecture
 
----
+OVH SIP Trunk
+     ↓
+  Asterisk (pjsip.conf)
+     ↓  extensions.conf (Stasis « openai-realtime »)
+ FastAPI + ARI
+ ├── main.py          → endpoints HTTP/WebSocket
+ ├── settings.py      → lecture du .env
+ ├── asterisk_ari.py  → connexion ARI & handlers
+ ├── events.py        → gestion StasisStart, media…
+ ├── media_loop.py    → boucle ARI ↔ OpenAI Realtime
+ └── audio_utils.py   → transcodage μ-law ⇄ PCM16
+     ↓
+OpenAI Realtime API
+     ↕
+Synthèse vocale & transcription
+     ↓
+  Utilisateur au téléphone
 
-## 🧠 À venir
+📞 Utilisation
 
-- Transcription en temps réel
-- Classification d’intention
-- Enregistrement de conversations
-- UI Web ou dashboard pour config
+Lancer Asterisk et assurez-vous qu’ARI est accessible.
 
----
+Démarrer l’application :
 
-## 🧑‍💻 Auteur
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
-Créé par **Suan Tay** — ingénieur IA  
-Avec l'aide de ChatGPT pour la structuration rapide
+Passez un appel sur votre numéro OVH :
 
----
+Attendez le message de bienvenue.
 
-## ⚠️ Licence
-
-Projet MVP éducatif — usage personnel ou en démo uniquement.
+Discutez normalement, voixia s’occupe de tout.

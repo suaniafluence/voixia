@@ -1,44 +1,49 @@
-name: Deploy to EC2
+# .github/workflows/deploy.yml
+name: CD Deploy to EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
-    name: Deploy VoixIA to EC2
+    name: Deploy to Ubuntu EC2
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_AWS }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H 13.36.177.25 >> ~/.ssh/known_hosts
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Deploy to EC2
-      run: |
-        ssh ubuntu@13.36.177.25 << 'EOF'
-          cd ~/voixia
+      - name: Package application
+        run: |
+          tar czf voixia.tar.gz .
 
-          # 1️⃣ On efface tout cache/PYC pour repartir sur du propre
-          find . -type d -name "__pycache__" -exec rm -rf {} +
-          find . -type f -name "*.pyc" -delete
+      - name: Copy to EC2
+        uses: appleboy/scp-action@v0.1.2
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "voixia.tar.gz"
+          target: "/home/${{ secrets.EC2_USER }}/voixia/
 
-          # 2️⃣ On synchronise sans conflit
-          git fetch origin main
-          git reset --hard origin/main
-
-          # 3️⃣ On recharge l’environnement et la config
-          source venv/bin/activate
-          pip install -r requirements.txt
-
-          # 4️⃣ On redémarre le service
-          sudo systemctl daemon-reload
-          sudo systemctl restart voixia.service
-        EOF
+      - name: Unpack & restart service
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/${{ secrets.EC2_USER }}/voixia
+            tar xzf voixia.tar.gz
+            source .venv/bin/activate || python3 -m venv .venv && source .venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart voixia.service

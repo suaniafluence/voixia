@@ -201,10 +201,18 @@ class SIPProtocol(asyncio.DatagramProtocol):
         self.transport.sendto("\r\n".join(resp).encode(), call["remote_sip"])
 
     async def _do_register(self, challenge=None):
-        self.cseq += 1  # NEW: Incrément séquentiel
+        self.cseq += 1
         branch = "z9hG4bK" + uuid.uuid4().hex
         tag = uuid.uuid4().hex[:8]
-
+        
+        # Nouveau : Headers optimisés pour OVH
+        REGISTER_HEADERS = {
+            'User-Agent': 'OVH-Compatible/1.0',
+            'Contact': f'<sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT};transport=udp>',
+            'Expires': '300',
+            'Allow': 'INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE'
+        }
+        
         auth = ""
         if challenge:
             resp = make_digest_response(challenge)
@@ -215,18 +223,21 @@ class SIPProtocol(asyncio.DatagramProtocol):
                 f'uri="sip:{SIP_SERVER}", '
                 f'response="{resp}", algorithm=MD5\r\n'
             )
-
+        
+        # Construction du message avec les nouveaux headers
         reg = "\r\n".join([
             f"REGISTER sip:{SIP_SERVER} SIP/2.0",
             f"Via: SIP/2.0/UDP 0.0.0.0;branch={branch}",
             "Max-Forwards: 70",
             f"To: <sip:{SIP_USERNAME}@{SIP_SERVER}>",
             f"From: <sip:{SIP_USERNAME}@{SIP_SERVER}>;tag={tag}",
-            f"Call-ID: {self.call_id}",  # NEW: Call-ID persistant
-            f"CSeq: {self.cseq} REGISTER",  # NEW: CSeq incrémenté
-            f"Contact: <sip:{SIP_USERNAME}@{PUBLIC_HOST}:{SIP_PORT}>",
+            f"Call-ID: {self.call_id}",
+            f"CSeq: {self.cseq} REGISTER",
+            f"Contact: {REGISTER_HEADERS['Contact']}",  # Surcharge le Contact précédent
+            f"User-Agent: {REGISTER_HEADERS['User-Agent']}",
+            f"Expires: {REGISTER_HEADERS['Expires']}",
+            f"Allow: {REGISTER_HEADERS['Allow']}",
             auth.rstrip(),
-            "Expires: 3600",
             "Content-Length: 0",
             "", ""
         ])

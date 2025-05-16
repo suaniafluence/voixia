@@ -5,6 +5,14 @@ import logging
 from dotenv import load_dotenv
 import aiosip
 from aiosip.auth import Auth
+import sys
+import asyncio
+
+if sys.version_info >= (3, 11):
+    from asyncio import coroutines
+    asyncio.coroutine = coroutines.coroutine
+else:
+    from asyncio import coroutine
 
 # Configuration
 load_dotenv()

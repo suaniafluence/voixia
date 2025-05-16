@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy:
-    name: Clone, Setup & Restart Voixia
+    name: Pull & Déployer Voixia (sans delete)
     runs-on: ubuntu-latest
 
     steps:
@@ -31,25 +31,26 @@ jobs:
             APP_DIR=/home/${{ secrets.EC2_USER }}/voixia
             REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
 
-            echo "→ Gestion du répertoire $APP_DIR"
+            echo "→ Dans $APP_DIR : préparation du Git"
             if [ ! -d "$APP_DIR" ]; then
-              echo "  • Clonage du repo dans $APP_DIR"
+              echo "  • Dossier inexistant : clone complet"
               git clone "$REPO_URL" "$APP_DIR"
-            elif [ -d "$APP_DIR/.git" ]; then
-              echo "  • Mise à jour du repo existant"
+            else
               cd "$APP_DIR"
+              if [ ! -d .git ]; then
+                echo "  • Pas de .git : initialisation repo sans toucher aux conf"
+                git init
+                git remote add origin "$REPO_URL"
+              fi
+              echo "  • Pull du code (main)"
               git fetch origin main
               git reset --hard origin/main
-            else
-              echo "  • Attention : $APP_DIR existe sans .git, on le recrée"
-              rm -rf "$APP_DIR"
-              git clone "$REPO_URL" "$APP_DIR"
             fi
 
             cd "$APP_DIR"
 
             echo "→ Vérification de requirements.txt"
-            [ -f requirements.txt ] || { echo "🛑 requirements.txt manquant"; exit 1; }
+            [ -f requirements.txt ] || { echo "🛑 requirements.txt introuvable"; exit 1; }
 
             echo "→ Création/activation du venv"
             if [ ! -d .venv ]; then

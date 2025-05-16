@@ -116,4 +116,4 @@ async def debug_sip():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=5050, log_level="debug")

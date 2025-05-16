@@ -1,26 +1,22 @@
 # .github/workflows/deploy.yml
 name: CD Deploy to EC2
 
-# Déclenchement :
 on:
-  # Automatiquement lors d’un push sur main
   push:
     branches:
       - main
-  # Et/ou manuellement depuis l’interface GitHub
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Déployer la branche main sur EC2
     runs-on: ubuntu-latest
-    needs: test   # ne s’exécute que si le job “test” passe
 
     steps:
       - name: Checkout code (branche main)
         uses: actions/checkout@v4
         with:
-          ref: main      # force la récupération de la branche main
+          ref: main
 
       - name: Setup Python
         uses: actions/setup-python@v4

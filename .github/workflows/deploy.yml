@@ -1,18 +1,26 @@
+# .github/workflows/deploy.yml
 name: CD Deploy to EC2
 
+# Déclenchement :
 on:
+  # Automatiquement lors d’un push sur main
   push:
-    branches: [ main ]
+    branches:
+      - main
+  # Et/ou manuellement depuis l’interface GitHub
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to Ubuntu EC2
+    name: Déployer la branche main sur EC2
     runs-on: ubuntu-latest
-    needs: test
+    needs: test   # ne s’exécute que si le job “test” passe
 
     steps:
-      - name: Checkout code
+      - name: Checkout code (branche main)
         uses: actions/checkout@v4
+        with:
+          ref: main      # force la récupération de la branche main
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -31,7 +39,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "voixia.tar.gz"
-          target: "/home/${{ secrets.EC2_USER }}/voixia/
+          target: "/home/${{ secrets.EC2_USER }}/voixia/"
 
       - name: Unpack & restart service
         uses: appleboy/ssh-action@v0.1.8

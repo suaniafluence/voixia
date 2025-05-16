@@ -25,17 +25,28 @@ async def sip_startup():
         # Résolution DNS explicite pour OVH
         sip_server = os.getenv("SIP_SERVER")
         sip_port = int(os.getenv("SIP_PORT", 5060))
+
+        # NEW: Gestion plus robuste de l'adresse
+        if not sip_server:
+            raise ValueError("SIP_SERVER non configuré dans .env")        
+
+
         addr_info = socket.getaddrinfo(sip_server, sip_port, 
                                       type=socket.SOCK_DGRAM, 
                                       proto=socket.IPPROTO_UDP)
+        # NEW: Vérification des résultats DNS
+        if not addr_info:
+            raise ValueError(f"Impossible de résoudre {sip_server}:{sip_port}")
         
         sip_protocol = await start_sip_server(addr_info[0][4])
         print(f"✅ SIP connecté à {sip_server}:{sip_port}")
     except Exception as e:
         print(f"❌ Échec connexion SIP: {str(e)}")
-        raise
+        raise RuntimeError("Échec démarrage SIP") from e
 
 async def sip_shutdown():
+
+
     if sip_protocol:
         await stop_sip_server(sip_protocol)
         print("🛑 SIP arrêté proprement")

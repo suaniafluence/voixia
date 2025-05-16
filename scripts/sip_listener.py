@@ -42,6 +42,9 @@ class RTPProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
+        msg = data.decode(errors="ignore")
+        if "REGISTER" in msg or "SIP/2.0" in msg:  # Filtre SIP seulement
+            print(f"📥 Réçue depuis {addr}:\n{msg[:500]}...")  # Truncate long messages
         pass  # Toujours utile pour keep-alive NAT
 
     def build_rtp_packet(self, payload: bytes) -> bytes:
@@ -257,6 +260,7 @@ class SIPProtocol(asyncio.DatagramProtocol):
         refresh_time = max(expires - 60, 60)  # 1mn avant expiration
         while True:
             await asyncio.sleep(refresh_time)
+            print("🕒 Rafraîchissement périodique du REGISTER")
             await self._do_register(self.challenge)
 
     # NEW: Gestion RTP par appel

@@ -1,10 +1,11 @@
 # voixia
 
-[![CI/CD](https://github.com/<ton-org>/voixia/actions/workflows/ev2voix.yml/badge.svg)](https://github.com/suaniafluence/voixia/actions/workflows/ev2voix.yml)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/suaniafluence/voixia/actions/workflows/ev2voix.yml)
+[![CI/CD](https://github.com/suaniafluence/voixia/actions/workflows/deploy.yml/badge.svg)](https://github.com/suaniafluence/voixia/actions/workflows/ev2voix.yml)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/suaniafluence/voixia/actions/workflows/python-test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/suaniafluence/voixia) <!-- ou badge Codecov si tu veux -->
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Licence MIT](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+
 **voixia** transforme vos appels téléphoniques en conversations animées avec un assistant IA en temps réel, propulsé par Asterisk et l’API Realtime d’OpenAI.
 
 ---

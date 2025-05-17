@@ -106,3 +106,18 @@ except Exception as e:
 Ce type de problème est fréquent lors de la migration vers Python 3.12, qui a renforcé certaines règles d'importation. Les bibliothèques plus anciennes ou moins maintenues comme swaggerpy utilisent souvent des pratiques d'importation qui ne sont plus recommandées dans les versions récentes de Python.
 
 La modification que nous avons apportée est une correction standard pour ce type de problème, et elle est conforme aux recommandations de la PEP 328 sur les imports relatifs explicites.
+
+Script pour corriger les problèmes de compatibilité dans swaggerpy pour Python 3.12
+```python
+# Activez votre environnement virtuel
+source /home/ubuntu/voixia/.venv/bin/activate
+
+# Rendez le script exécutable
+chmod +x fix_swaggerpy_urlparse.py
+
+# Exécutez le script (il trouvera automatiquement swaggerpy)
+python fix_swaggerpy_urlparse.py
+
+# Si nécessaire, spécifiez le chemin manuellement
+# python fix_swaggerpy_urlparse.py /home/ubuntu/voixia/.venv/lib/python3.12/site-packages/swaggerpy
+```

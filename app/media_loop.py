@@ -1,9 +1,21 @@
 # app/media_loop.py
 import base64
-import numpy as np
+import json                                 # ← nécessaire pour json.dumps
 import websockets
+import numpy as np
 from .audio_utils import mulaw2linear, linear2mulaw
-from .settings import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BETA_HEADER
+from pathlib import Path
+from dotenv import load_dotenv
+
+
+
+from .settings import (
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
+    OPENAI_BETA_HEADER,
+    VOICE,               # ← ajoute ça
+    SYSTEM_MESSAGE       # ← et ça
+)
 from .logger import logger
 
 async def media_loop(channel_id, ari_client):
@@ -14,6 +26,7 @@ async def media_loop(channel_id, ari_client):
         "OpenAI-Beta": OPENAI_BETA_HEADER
     }
     async with websockets.connect(uri, extra_headers=headers) as openai_ws:
+        # Initialisation de la session Realtime
         await openai_ws.send(json.dumps({
             "method": "init",
             "voice": VOICE,
@@ -22,24 +35,22 @@ async def media_loop(channel_id, ari_client):
 
         # Boucle ARI WS events
         async for msg in ari_client.ws:
-            event = msg.get('event')
-            if event != 'ChannelAgiExec':
+            if msg.get('event') != 'ChannelAgiExec':
                 continue
-            args = msg.get('args', [])
-            b64 = args[2]  # audio base64
+            b64 = msg['args'][2]  # audio en base64
             pcm = mulaw2linear(base64.b64decode(b64))
 
-            # Envoyer à OpenAI
+            # Envoi du flux PCM à OpenAI
             await openai_ws.send(pcm.tobytes())
 
-            # Recevoir réponse audio
+            # Récupération de la réponse audio
             resp = await openai_ws.recv()
             mu = linear2mulaw(resp)
 
-            # Jouer sur Asterisk
+            # Lecture dans Asterisk
             await ari_client.channels.play(
                 channel=channel_id,
                 media=f"sound:buffer_{channel_id}",
                 playbackId='play'
             )
-            logger.debug(f'Response audio jouée sur canal {channel_id}')
+            logger.debug(f"Réponse audio jouée sur canal {channel_id}")

@@ -1,5 +1,5 @@
-# app/asterisk_ari.py
-from asterisk.ari import ARIClient
+from ari import ARIClient
+from .settings import ASTERISK_URL, ARI_USER, ARI_PASS
 from .logger import logger
 
 def get_ari_client():

@@ -1,8 +1,14 @@
-OPENAI_API_KEY=your-openai-key
-VOICE=alloy
-SIP_SERVER=sip.ovh.net
-SIP_PORT=5060
-SIP_USERNAME=your-username@sip.ovh.net
-SIP_PASSWORD=your-password
-PUBLIC_HOST=172.0.0.0
-RTP_PORT=10000  # Défaut dans le code
+OPENAI_API_KEY=sk_open ai key
+
+# Connexion ARI (Asterisk REST Interface)
+ARI_USER=voixia_user
+ARI_PASS=unSecretDeFolie
+
+# URL d'accès à l'ARI (par défaut Asterisk en local)
+ASTERISK_URL=http://localhost:8088
+
+# Port sur lequel tourne FastAPI
+PORT=8000
+
+# (Optionnel) Niveau de logs (DEBUG, INFO, WARNING…)
+LOG_LEVEL=INFO

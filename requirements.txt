@@ -1,6 +1,6 @@
 fastapi>=0.95.0
 uvicorn[standard]>=0.22.0
-ari>= 0.1.3
+py3ari>=0.1.4
 websockets>=11.0
 python-dotenv>=1.0.0
 numpy>=1.24.0

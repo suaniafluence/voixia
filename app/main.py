@@ -1,30 +1,36 @@
 # app/main.py
-import asyncio
+
+# app/main.py
+import threading
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from .asterisk_ari import get_ari_client
+from .asterisk_ari import start_ari, client
 from .settings import PORT
 from .events import on_stasis_start
 from .logger import logger
 
-app = FastAPI()
+ app = FastAPI()
 
-@app.on_event("startup")
-async def startup_event():
-    ari = get_ari_client()
-    ari.on_channel_event('StasisStart', on_stasis_start)
-    logger.info('Handler StasisStart enregistré')
+ @app.on_event("startup")
+ async def startup_event():
 
-@app.get("/", response_class=JSONResponse)
-async def index():
-    return {"status": "voixia API up and running"}
+    # Branche l’événement et démarre la boucle ARI dans un thread séparé
+    client.on_channel_event('StasisStart', on_stasis_start)
+    threading.Thread(
+        target=lambda: start_ari(apps="voixia"),
+        daemon=True
+    ).start()
+    logger.info('Boucle ARI démarrée en arrière-plan (voixia)')
 
-@app.websocket("/media-stream")
-async def media_stream(ws):
-    await ws.accept()
-    # (Optionnel) traitement direct du stream
-    try:
-        async for msg in ws.iter_text():
-            logger.debug(f"Message WebSocket reçu: {msg}")
-    except Exception as e:
-        logger.error(f"WS erreur: {e}")
+ @app.get("/", response_class=JSONResponse)
+ async def index():
+     return {"status": "voixia API up and running"}
+
+ @app.websocket("/media-stream")
+ async def media_stream(ws):
+     await ws.accept()
+     try:
+         async for msg in ws.iter_text():
+             logger.debug(f"Message WebSocket reçu: {msg}")
+     except Exception as e:
+         logger.error(f"WS erreur: {e}")
